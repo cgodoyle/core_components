@@ -1,0 +1,21 @@
+[project]
+name = "core-components"
+version = "0.1.0"
+description = "abstract classes and reusable components for (my) python webapps"
+authors = ["[Cristian Godoy] <[cgodoy@gmail.com]>"]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [ 
+"ipyleaflet",
+"ipywidgets",
+"ipyvuetify",
+"ipython",
+"Shapely",
+"numpy",
+]
+
+[tool.setuptools]
+[build-system]
+requires = ["setuptools>=43.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
