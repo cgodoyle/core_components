@@ -2,7 +2,9 @@
 name = "core-components"
 version = "0.1.0"
 description = "abstract classes and reusable components for (my) python webapps"
-authors = ["[Cristian Godoy] <[cgodoy@gmail.com]>"]
+authors = [
+  {name = "Cristian Godoy", email = "crgo@nve.no" } 
+]
 readme = "README.md"
 requires-python = ">=3.10"
 
