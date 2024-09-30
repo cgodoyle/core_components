@@ -27,6 +27,20 @@ class BtnLoader(ipyvuetify.Btn):
         self.disabled = self.loading
     
 
+class Loader(ipyvuetify.Container):
+    def __init__(self, text="Loading..."):
+        self.loader = ipyvuetify.ProgressLinear(indeterminate=True, height="12", color="red")
+        self.text_widget = self.text_widget = ipywidgets.HTML(value=f"<span>{text}</span>")
+        super().__init__(children=[self.loader, self.text_widget])
+    
+    def set_text(self, text):
+        self.text_widget.value = f"<span>{text}</span>"
+        
+    def hide(self):
+        self.style_ = 'display: none;'
+        self.text_widget.value = ""
+
+
 class OutputPopup(ipyleaflet.Popup):
     """
     A custom popup class that displays an output widget. 
@@ -145,15 +159,17 @@ class WMSComponent(SimpleSideMenu):
             wms_buttons (list): A list of buttons to be displayed.
             wms_panel (ipyvuetify.Container): The panel to be displayed.
         """
-        wms_buttons = []
+        
+        component_dict = {}
         for wms_name, wms_params in wms_dict.items():
             button = ipywidgets.Button(description=wms_name, layout=ipywidgets.Layout(width="auto"), icon="fa-map",
                                        tooltip=f"Add {wms_name} wms-layer")
-            wms_buttons.append(button)
+            component_dict[wms_name] = button
             button.on_click(partial(self.action_wms_default, m=m, wms_name=wms_name, wms_params=wms_params))
         
-        wms_layers_box = ipywidgets.VBox(wms_buttons, layout=ipywidgets.Layout(padding="0px 5px 5px 5px"))
+        wms_layers_box = ipywidgets.VBox(list(component_dict.values()), layout=ipywidgets.Layout(padding="0px 5px 5px 5px"))
         super().__init__(expansion_panel_items=wms_layers_box, icon="mdi-map")
+        self.items = component_dict
 
 
     @staticmethod
@@ -223,4 +239,4 @@ class GUIBase(ABC):
         return ipyvuetify.Tooltip(bottom=True, 
                                   v_slots=[{'name': 'activator','variable': 'tooltip',
                                             'children': children,}], 
-                                            children=[tooltip]) 
+                                  children=[tooltip]) 

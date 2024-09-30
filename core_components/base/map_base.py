@@ -3,7 +3,7 @@ from shapely.geometry import LineString, Polygon
 import numpy as np
 
 
-from core_components.gui_base import WMSComponent
+from core_components.base.gui_base import WMSComponent
 
 BASE_WMS = {'Faresoner': {'url': 'https://nve.geodataonline.no/arcgis/services/SkredKvikkleire2/MapServer/WMSServer', 
                           'layers': 'KvikkleireFaregrad'},
