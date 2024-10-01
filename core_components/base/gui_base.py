@@ -107,12 +107,16 @@ class SideMenu(ipyvuetify.Container):
 
         self.icon = icon
 
+
         expansion_panel = ipyvuetify.ExpansionPanels(children=[
             ipyvuetify.ExpansionPanel(children=[
-                ipyvuetify.ExpansionPanelHeader(children=[
+                ipyvuetify.ExpansionPanelHeader(
+                    class_=self.classes[1],
+                    children=[
                     ipyvuetify.Icon(children=[self.icon])
                 ]),
-                ipyvuetify.ExpansionPanelContent(children=[
+                ipyvuetify.ExpansionPanelContent(class_=self.classes[2],
+                                                 children=[
                     ipyvuetify.Container(class_=self.classes[0], children=expansion_panel_items)
                 ])
             ])
@@ -121,6 +125,7 @@ class SideMenu(ipyvuetify.Container):
         grid_container = ipyvuetify.Container(class_=self.classes[3], children=grid_items)
 
         self.children = [expansion_panel, grid_container]
+        self.class_ = self.classes[4]
 
 
 class SimpleSideMenu(ipyvuetify.Layout):
@@ -203,10 +208,10 @@ class GUIBase(ABC):
         self.sliders = self.create_sliders()
         self.checkboxes = self.create_checkboxes()
         self.outputs = self.create_outputs()
+        self.other_widgets = self.create_other_widgets()
         self.side_panel = self.gui_side_panel()
         self.wms_buttons = []
         self.wms_panel = self.gui_wms_panel()
-        self.other_widgets = self.create_other_widgets()
     
     @abstractmethod
     def create_buttons(self):
