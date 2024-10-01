@@ -34,12 +34,13 @@ class Loader(ipyvuetify.Container):
         super().__init__(children=[self.loader, self.text_widget])
     
     def set_text(self, text):
+        self.style_ = 'display: block;'
         self.text_widget.value = f"<span>{text}</span>"
         
     def hide(self):
         self.style_ = 'display: none;'
         self.text_widget.value = ""
-
+    
 
 class OutputPopup(ipyleaflet.Popup):
     """
@@ -205,6 +206,7 @@ class GUIBase(ABC):
         self.side_panel = self.gui_side_panel()
         self.wms_buttons = []
         self.wms_panel = self.gui_wms_panel()
+        self.other_widgets = self.create_other_widgets()
     
     @abstractmethod
     def create_buttons(self):
@@ -230,6 +232,10 @@ class GUIBase(ABC):
     def gui_wms_panel(self):
         ...
     
+    @abstractmethod
+    def create_other_widgets(self):
+        ...
+
     @staticmethod 
     def _div(tag, class_, children):
         return ipyvuetify.Html(tag=tag, class_=class_, children=children)

@@ -15,6 +15,7 @@ class ControllerBase(ABC):
         self.sliders = ui.sliders
         self.checkboxes = ui.checkboxes
         self.download_output = ui.outputs["download_output"]
+        self.other_widgets = ui.other_widgets
         display(self.download_output)
 
         self.side_panel = ui.side_panel

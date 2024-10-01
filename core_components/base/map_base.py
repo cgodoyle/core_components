@@ -62,8 +62,8 @@ class Map(ipyleaflet.Map):
         self.map_draw_control.clear_polygons()
     
     def _add_wms(self, wms_dict: dict):
-        wms_component = WMSComponent(self, wms_dict)
-        wms_widget = ipyleaflet.WidgetControl(widget=wms_component, position="bottomleft")
+        self.wms_component = WMSComponent(self, wms_dict)
+        wms_widget = ipyleaflet.WidgetControl(widget=self.wms_component, position="bottomleft")
         self.add(wms_widget)
     
 
