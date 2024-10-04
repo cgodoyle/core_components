@@ -4,7 +4,7 @@ from pathlib import Path
 
 def setup_logger(name='root', log_file=None):
     current_dir = Path.cwd()
-    log_dir = Path('../logs') if current_dir.name == "notebooks" else Path('logs')
+    log_dir = Path('../.logs') if current_dir.name == "notebooks" else Path('.logs')
     
     if not log_dir.exists():
         log_dir.mkdir(parents=True)
