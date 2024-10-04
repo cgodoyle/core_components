@@ -11,6 +11,10 @@ config = {
         'url': "https://wfs.geonorge.no/skwms1/wfs.matrikkelen-bygningspunkt",
         'columns': ['bygningsnummer', 'bygningsstatus', 'kommunenavn', 'bygningstype', 'bygningId', 'geometry'],
         'query_filter': "bygningsstatus not in ('GR', 'IP', 'BR', 'BF', 'IG')"
+    },
+    'consequence': {
+        'url': "https://gis3.nve.no/arcgis/rest/services/geoprocessing/Konsekevens1/GPServer/KonskvensParametere1",
+        'items': ["Beboere","Barn","Ansatte","Bygninger","Kraftlinjer","Toglinjer"]
     }
 }
 

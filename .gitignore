@@ -26,3 +26,5 @@ wheels/
 
 # Testing
 test_*
+
+__dummy__

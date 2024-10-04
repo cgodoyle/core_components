@@ -20,6 +20,8 @@ dependencies = [
 "geopandas",
 "tqdm",
 "rasterio",
+"beautifulsoup4",
+"requests",
 ]
 
 
