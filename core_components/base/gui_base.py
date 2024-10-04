@@ -211,7 +211,6 @@ class GUIBase(ABC):
         self.other_widgets = self.create_other_widgets()
         self.side_panel = self.gui_side_panel()
         self.wms_buttons = []
-        self.wms_panel = self.gui_wms_panel()
     
     @abstractmethod
     def create_buttons(self):

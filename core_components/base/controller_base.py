@@ -19,8 +19,6 @@ class ControllerBase(ABC):
         display(self.download_output)
 
         self.side_panel = ui.side_panel
-        self.wms_panel = ui.wms_panel
-        self.wms_buttons = ui.wms_buttons
 
         self.lastimeclicked = 0
 
