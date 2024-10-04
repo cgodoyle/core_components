@@ -232,11 +232,7 @@ class GUIBase(ABC):
     @abstractmethod
     def gui_side_panel(self):
         ...
-
-    @abstractmethod
-    def gui_wms_panel(self):
-        ...
-    
+   
     @abstractmethod
     def create_other_widgets(self):
         ...
