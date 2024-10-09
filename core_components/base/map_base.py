@@ -106,3 +106,16 @@ class Map(ipyleaflet.Map):
         hillshade.base = True
 
         return [osm, gcbilder, basis]
+    
+
+    def show(self, height: int = 600) -> None:
+        
+        from ipyvuetify import Container
+        from IPython.display import display
+        
+        layout = Container(
+            class_='app-map-container', 
+            style_ = f"height: {height}px;",
+            children=[self])
+
+        display(layout)
