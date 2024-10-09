@@ -17,6 +17,12 @@ CRS = cfg["global"]["crs_default"]  # default crs
 
 
 def check_api_status():
+    """
+    Check if the høydedata API is up and running
+    Args:
+    Returns:
+        bool: True if the API is up and running, False otherwise
+    """
     xmin, ymin, xmax, ymax, width, height, nodata = 261906, 6650936, 264220, 6651626, 462, 138, -9999
     request_url = HOYDEDATA_URL.format(HOYDEDATA_LAYER, xmin, ymin, xmax, ymax, width, height, nodata)
 
@@ -35,7 +41,19 @@ def check_api_status():
     return True
 
 
-def request_hoydedata(bounds, res =5, nodata=-9999, max_retries=5):
+def request_hoydedata(bounds:tuple, res:int=5, nodata:int=-9999, max_retries:int=5) -> bytes:
+    """
+    Get the digital elevation model from the given bounds from the høydedata API
+
+    Args:
+        bounds: tuple with the bounding box (xmin, ymin, xmax, ymax)
+        res: resolution of the raster
+        nodata: nodata value
+        max_retries: maximum number of retries
+
+    Returns:
+        tif_bytes: bytes of the tif file
+    """
     xmin, ymin, xmax, ymax = bounds
     xmin -= 10
     xmax += 10
@@ -63,7 +81,17 @@ def request_hoydedata(bounds, res =5, nodata=-9999, max_retries=5):
     return tif_bytes
 
 
-def generate_raster_from_hoydedata(tif_bytes):
+def generate_raster_from_hoydedata(tif_bytes:bytes) -> tuple:
+    """
+    Generate a raster from the given tif bytes
+
+    Args:
+        tif_bytes: bytes of the tif file
+
+    Returns:
+        dem_array: numpy array with the elevation values
+        dataset_profile: profile of the raster
+    """
     try:
         with MemoryFile(tif_bytes) as memfile:
             with memfile.open() as dataset:

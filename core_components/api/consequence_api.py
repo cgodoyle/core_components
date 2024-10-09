@@ -9,7 +9,15 @@ from core_components.config import get_config
 cfg = get_config()
 URL = cfg["consequence"]["url"]
 
-def poly_to_esri(poly:gpd.GeoDataFrame)->str:
+
+def poly_to_esri(poly:gpd.GeoDataFrame) -> str:
+    """
+    Convert a geopandas/shapely polygon to an ESRI geometry string
+    Args:
+        poly: GeoDataFrame with the polygon
+    Returns:
+        str: ESRI geometry string
+    """
     geojson = poly.geometry.iloc[0].__geo_interface__
     esri_geometry = {
         "rings": [geojson['coordinates'][0]],
@@ -19,7 +27,14 @@ def poly_to_esri(poly:gpd.GeoDataFrame)->str:
     return esri_geometry_string
 
 
-def check_job_status(job_id):
+def check_job_status(job_id:str) -> dict:
+    """
+    Check the status of a job
+    Args:
+        job_id: id of the job
+    Returns:
+        dict: job status
+    """
     job_status_url = f"{URL}/jobs/{job_id}"
 
     status_url = f"{job_status_url}?f=json"
@@ -31,9 +46,15 @@ def check_job_status(job_id):
         print(response.status_code)
         return None
 
-def request_consequence_nve(polygon, items=["Beboere","Barn","Ansatte","Bygninger","Kraftlinjer","Toglinjer"]):
-    # items = '["Beboere","Barn","Ansatte","Bygninger","Veier","Kraftlinjer","Toglinjer"]'
-    
+def request_consequence_nve(polygon:gpd.GeoDataFrame, items:tuple=("Beboere","Barn","Ansatte","Bygninger","Kraftlinjer","Toglinjer")) -> dict:
+    """
+    Request the consequences from the NVE API
+    Args:
+        polygon: GeoDataFrame with the polygon
+        items: tuple with the items to request
+    Returns:
+        dict: consequence parameters
+    """   
     gstring = poly_to_esri(polygon)
     
     consequence_items_str = '['
@@ -92,7 +113,15 @@ def request_consequence_nve(polygon, items=["Beboere","Barn","Ansatte","Bygninge
     else:
         return {"API error": f"see the details here: {job_status_url}"}
 
-def report_consequence(consequence_dict):
+def report_consequence(consequence_dict: dict) -> list:
+    """
+    Report the consequences from the NVE API
+    Args:
+        consequence_dict: dict with the consequence parameters
+    Returns:
+        list: list with the report
+    """
+
     output = []
     query_items = ["beboere","barnehagebarn", "skoleelever","ansatte","bygninger","veier","kraftnett","toglinjer"]
     for kk, vv in consequence_dict.items():
@@ -133,7 +162,15 @@ format_dict = {
     
 }
 
-def report_consequence_html(consequence_dict, level=2):
+def report_consequence_html(consequence_dict:dict, level:int=2) -> list:
+    """
+    Report the consequences from the NVE API as html elements
+    Args:
+        consequence_dict: dict with the consequence parameters
+        level: int with the level of the header
+    Returns:
+        list: list with the report
+    """
     output = []
     query_items = ["beboere", "barnehagebarn", "skoleelever", "ansatte", "bygninger", "veier", "kraftnett", "toglinjer"]
     
@@ -204,7 +241,14 @@ def report_consequence_html(consequence_dict, level=2):
     return output
 
 
-def generate_html(consequence_dict):
+def generate_html(consequence_dict:dict) -> str:
+    """
+    Generate the html from the consequence dict
+    Args:
+        consequence_dict: dict with the consequence parameters
+    Returns:
+        str: html string
+    """
     html_lines = report_consequence_html(consequence_dict)
     return "\n".join(html_lines)
 

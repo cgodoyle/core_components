@@ -17,7 +17,13 @@ CRS = cfg["global"]["crs_default"]
 CRS_MAP = cfg["global"]["crs_map"]
 
 
-def check_api_status():
+def check_api_status() -> bool:
+    """
+    Check if the buildings API is up and running
+    Args:
+    Returns:
+        bool: True if the API is up and running, False otherwise
+    """
     response = requests.get(URL, params={"service":"WFS", 
                                          "request": "GetCapabilities"})
     if response.status_code == 200:
@@ -26,8 +32,17 @@ def check_api_status():
         return False
 
 
-def get_building_points(bounds):
-    
+def get_building_points(bounds:tuple) -> gpd.GeoDataFrame:
+    """
+    Get the building points from the given bounds from the buildings API
+
+    Args:
+        bounds: tuple with the bounding box (xmin, ymin, xmax, ymax)
+
+    Returns:
+        gdf: GeoDataFrame with the building points
+    """
+
     gdf = gpd.GeoDataFrame([1], geometry=[box(*bounds)], crs=CRS)
     gdf = gdf.to_crs(CRS_MAP)
 
@@ -62,7 +77,16 @@ def get_building_points(bounds):
     return dataset
 
 
-def _format_dataset(dataset):
+def _format_dataset(dataset: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    Slice and query the building points GeoDataFrame to keep only the relevant columns and rows
+
+    Args:
+        dataset: GeoDataFrame with the building points
+
+    Returns:
+        out_dataset: GeoDataFrame with the building points formatted
+    """
     out_dataset = dataset.copy()
     out_dataset = out_dataset[COLS].query(FILTER)
     return out_dataset
