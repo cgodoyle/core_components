@@ -119,7 +119,15 @@ async def get_soundings(soudings_href_list, method):
     return ks_data_df
 
 
-async def get_all_soundings(borehullunders: gpd.GeoDataFrame):
+async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    Fetches and processes sounding data for given borehole investigations.
+    Args:
+        borehullunders (gpd.GeoDataFrame): A GeoDataFrame containing borehole investigation data.
+    Returns:
+        gpd.GeoDataFrame or None: A GeoDataFrame containing processed borehole sounding data, or None if no data is available.
+    """
+
     gbhu = borehullunders.copy()
     gbhu = gbhu.rename(columns={"metode-StatiskSondering": "ss",
                                 "metode-KombinasjonSondering": "ks",
@@ -175,28 +183,56 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame):
     return boreholes_out
 
 
-def get_collection(collection, bounds):
+def get_collection(collection, bounds, limit = 1000):
+    """
+    Fetches a collection of geospatial data within specified bounds from the NADAG API.
+    see documentation at https://ogcapitest.ngu.no/rest/services/grunnundersokelser_utvidet
+    Args:
+        collection (str): The name of the collection to fetch. For example, 'geotekniskborehullunders'.
+        bounds (tuple): A tuple representing the bounding box coordinates (minx, miny, maxx, maxy).
+        limit (int, optional): The maximum number of records to fetch per request. Defaults to 1000.
+    Returns:
+        gpd.GeoDataFrame: A GeoDataFrame containing the fetched geospatial data. Returns an empty GeoDataFrame if no data is found.
+    Raises:
+        requests.exceptions.RequestException: If there is an issue with the HTTP request.
+        ValueError: If the response cannot be parsed as JSON.
+    """
     
     bbox = gpd.GeoDataFrame(geometry=[box(*bounds)], crs=CRS).to_crs(CRS_API).total_bounds
     url = URL.format(collection=collection)
     params = {
         'bbox': ','.join(map(str, bbox)),
         'crs': valid_crs[CRS],
-        'limit': 1
+        'limit': limit
     }
-    # print(requests.Request('GET', url, params=params).prepare().url)
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-    data = response.json()
-    if data["numberReturned"] < data["numberMatched"]:
-        params['limit'] = data["numberMatched"]+1
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-    data = response.json()
-    features = data['features']
-    if len(features) == 0:
+    
+    
+    data_list = []
+    next_page = True
+    cont = 0
+    while next_page:
+        cont += 1
+        response = requests.get(url, params=params if cont == 1 else None)
+        response.raise_for_status()
+        try:
+            data = response.json()
+        except Exception as e:
+            print("Error in response")
+            print(requests.Request('GET', url).prepare().url)
+            raise e
+            
+        
+        links_rel = list(map(lambda x: x.get("rel"), data["links"]))
+        if "next" in links_rel:
+            url = list(filter(lambda x: x.get("rel") == "next", data["links"]))[0]["href"]
+            next_page = True
+        else:
+            next_page = False
+        data_list.extend(data["features"])
+    if len(data_list) == 0:
         return gpd.GeoDataFrame()
-    return gpd.GeoDataFrame.from_features(features, crs=CRS)
+    else:
+        return gpd.GeoDataFrame.from_features(data_list, crs=CRS)
 
 
 async def get_samples(gbhu):
@@ -271,23 +307,98 @@ async def get_samples(gbhu):
     return samples_gdf
 
 
-def get_rock_depth_dataset(bounds: tuple) -> gpd.GeoDataFrame:
+async def get_data_big_areas(bounds: tuple, max_dist_query:int=2000,
+                             include_samples=True) -> gpd.GeoDataFrame:
+    from core_components.utils.geo import split_bbox
+    from tqdm.notebook import tqdm
+
+    n_cols, n_rows = max((bounds[2]-bounds[0])//max_dist_query,1),max((bounds[3]-bounds[1])//max_dist_query,1)
+    sub_boxes = split_bbox(gpd.GeoDataFrame(geometry=[box(*bounds)], crs=CRS), n_rows, n_cols)
+    gbhu_list = []
+
+    for item in tqdm(sub_boxes.itertuples(), total=len(sub_boxes)):
+        gbhu = get_collection("geotekniskborehullunders", tuple(item.geometry.bounds))
+        gbhu_list.append(gbhu)
+
+    gbhu_list = [item for item in gbhu_list if not (item is None or item.empty)]
+    gbhu = pd.concat(gbhu_list)
+
+    borehole_list = []
+    sample_list = []
+
+    for ii, item in tqdm(enumerate(gbhu_list)):
+        if item.empty:
+            borehole_list.append(None)
+            sample_list.append(None)
+        else:
+            try:
+                boreholes = await get_all_soundings(item)
+                if include_samples:
+                    samples = await get_samples(item)
+                else:
+                    samples = None
+            except Exception as e:
+                logger.error(f"error at {item.location_name}, index {ii}: {e}")
+                boreholes = None
+                samples = None
+            borehole_list.append(boreholes)
+            sample_list.append(samples)
+
+    borehole_gdf = pd.concat(borehole_list, ignore_index=True)
+    sample_gdf = pd.concat(sample_list, ignore_index=True)
+
+    return gbhu, borehole_gdf, sample_gdf
+
+
+def get_rock_depth_dataset(gbhu, 
+                           rock_depth_quality_threshold=0,
+                           max_depth=25) -> gpd.GeoDataFrame:
     """
-    Get rock depth dataset from NADAG
+    Extract rock depth dataset from NADAG borehole investigations.
 
     Args:
-        bounds (tuple): (minx, miny, maxx, maxy)
+        gbhu (gpd.GeoDataFrame): GeoDataFrame containing borehole investigation data.
+        rock_depth_quality_threshold (int): Minimum quality threshold for rock depth data (0 to 2). 
+                                            1=antatt, 2=påvist, 0=no rock.
+        max_depth (int): Maximum depth to consider for boreholes without rock depth data.
 
     Returns:
-        gpd.GeoDataFrame: Rock depth dataset
+        gpd.GeoDataFrame: GeoDataFrame containing rock depth information.
     """
-    gbhu = get_collection("geotekniskborehullunders", tuple(bounds))
+    assert 0<=rock_depth_quality_threshold<=2, "rock_depth_quality_threshold must be between 0 and 2"
+    
+    max_rock_depth_filter = 500  # noqa: F841
+    
+    _fields = ["geometry", "elevation", "rock_depth", "rock_elevation", "rock_depth_quality", "source"]
+
     gdf = gbhu[["boretLengdeTilBerg", "høyde", "geometry"]].dropna(subset="boretLengdeTilBerg")
     gdf["rock_depth"] = gdf.boretLengdeTilBerg.map(lambda x: x.get('borlengdeTilBerg'))
+    gdf["rock_depth_quality"]  = gdf.boretLengdeTilBerg.map(lambda x: int(x.get('borlengdeKvalitet')) if isinstance(x, dict) else 0)
     gdf = gdf.drop(columns="boretLengdeTilBerg")
     gdf = gdf.rename(columns={"høyde": "elevation"})
     gdf["rock_elevation"] = gdf.elevation - gdf.rock_depth
-    return gdf[["geometry", "elevation", "rock_depth", "rock_elevation"]]
+    gdf["source"] = "nadag"
+    gdf = gdf[_fields]
+    print(f"Found {len(gdf)} boreholes with rock depth")
+
+    gdf_no_rock = gbhu.query("boretLengdeTilBerg.isnull() and boretLengde >=  @max_depth")[["boretLengde", "høyde", "geometry"]].copy()
+    gdf_no_rock["rock_depth"] = gdf_no_rock.boretLengde
+    gdf_no_rock = gdf_no_rock.rename(columns={"høyde": "elevation"})
+    gdf_no_rock["rock_elevation"] = gdf_no_rock.elevation - gdf_no_rock.rock_depth
+    gdf_no_rock["rock_depth_quality"] = 0
+    gdf_no_rock["source"] = "nadag_no_rock"
+    gdf_no_rock = gdf_no_rock[_fields]
+    print(f"Found {len(gdf_no_rock)} boreholes with no rock depth and assuming rock depth at bh's maximum depth")
+    print("    Warning: This is a rough estimate! Use it only for categorical analysis")
+
+    gdf_depth = pd.concat([gdf, gdf_no_rock])
+
+    
+    gdf_depth = gdf_depth.query("rock_depth < @max_rock_depth_filter and rock_depth_quality >= @rock_depth_quality_threshold")
+    
+    print(f"Total rock depth dataset: {len(gdf_depth)} boreholes after filtering")
+
+    return gdf_depth
 
 
 def create_flagged_column(df, col_start, col_end):
