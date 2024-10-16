@@ -276,12 +276,14 @@ class ProfileFigure:
     
     def __init__(self, profile:Profile, layout:go.Layout=None, 
                  as_widget:bool=True,
-                 graph_width:int=None,
+                 width:int=None,
+                 height:int=None,
                  equal_axis_xy:bool=False):
 
         if layout is None:
             profile_length = round(profile.line.length.iloc[-1], 1)
-            graph_width = max(int(profile_length * 4), 500) if graph_width is None else graph_width
+            graph_width = max(int(profile_length * 4), 500) if width is None else width
+
             line_coords = profile.line.get_coordinates()
             x0, y0 = line_coords.iloc[0].values
             x1, y1 = line_coords.iloc[1].values
@@ -293,6 +295,7 @@ class ProfileFigure:
                 showlegend=True,
                 dragmode='pan',
                 width=graph_width,
+                height=height,
    
             )
 
