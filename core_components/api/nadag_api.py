@@ -21,6 +21,7 @@ CRS_API = cfg["global"]["crs_map"]
 COLUMN_MAPPER_BH = cfg["nadag"]["column_mapper_borehole"]
 COLUMN_MAPPER_SA = cfg["nadag"]["column_mapper_samples"]
 SAMPLE_COLUMNS = cfg["nadag"]["columns_samples"]
+TIMEOUT = cfg["nadag"]["timeout"]
 
 collections = requests.get(base_url).json()
 valid_crs = {int(xx.split("/")[-1]):xx for xx in collections["crs"] if xx.split("/")[-1].isnumeric()}
@@ -44,7 +45,7 @@ def get_href(href):
 async def get_async(href: str) -> dict:
     if href is None:
         return None
-    timeout = httpx.Timeout(120)
+    timeout = httpx.Timeout(TIMEOUT)
     async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.get(href) 
             data = response.json()
@@ -235,7 +236,7 @@ def get_collection(collection, bounds, limit = 1000):
         return gpd.GeoDataFrame.from_features(data_list, crs=CRS)
 
 
-async def get_samples(gbhu):
+async def get_samples(gbhu, aggregate=True):
     gbhu = gbhu.rename(columns={"metode-GeotekniskPrøveserie": "ps"})
     if "ps" not in gbhu.columns:
         return None
@@ -291,6 +292,9 @@ async def get_samples(gbhu):
     sample_merged = sample_merged.rename(columns=COLUMN_MAPPER_SA)
     sample_merged['layer_composition'] = sample_merged['layer_composition'].map(lambda x: str(x).lower())
     
+    if len(sample_merged) > 0 and aggregate:
+        sample_merged = aggregate_samples(sample_merged)
+
     samples_gdf = gpd.GeoDataFrame(sample_merged, crs=bh.crs) if len(sample_merged) > 0 else None
 
     if samples_gdf is not None:
@@ -304,7 +308,43 @@ async def get_samples(gbhu):
         samples_gdf["z"] = samples_gdf["location_elevation"]
         samples_gdf["depth"] = (samples_gdf.depth_base + samples_gdf.depth_top)/2
 
+    
     return samples_gdf
+
+
+def aggregate_samples(samples_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    
+    quick_clay_keywords = ["quick", "kvikk", "sprøbrudd"]
+    
+    default_agg_func = 'min'
+    def take_any(x):
+        return x.iloc[0]
+    def clf(x):
+        values = x.unique()
+        for xx in values:
+            if any(kwd in xx.lower() for kwd in quick_clay_keywords):
+                return "quick_clay"
+        return 'other'
+
+    agg_funcs = {
+        'water_content': 'mean',    # Sumar los valores de la columna A
+        'layer_composition': clf,
+        'liquid_limit': 'mean', 
+        'plastic_limit': 'mean',
+        'name': take_any,
+        'prøveserieid': take_any, 
+        'location_id': take_any, 
+        'geometry': take_any,
+        'location_name': take_any, 
+    }
+
+
+    # Crear un diccionario de funciones de agregación que incluya la función por defecto
+    agg_funcs_with_default = {col: agg_funcs.get(col, default_agg_func) for col in samples_gdf.columns}
+    samples = samples_gdf.groupby('prøveseriedelid', as_index=False).agg(agg_funcs_with_default)
+    
+
+    return samples
 
 
 async def get_data_big_areas(bounds: tuple, max_dist_query:int=2000,
