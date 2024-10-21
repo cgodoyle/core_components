@@ -18,6 +18,7 @@ config = {
     },
     'nadag': {
         'url': "https://ogcapitest.ngu.no/rest/services/grunnundersokelser_utvidet/collections",
+        'timeout': 300,
         'column_mapper_borehole': {
             'anvendtlast': 'penetration_force', 
             'boretlengde': 'depth', 
