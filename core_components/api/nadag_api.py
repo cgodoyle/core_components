@@ -292,8 +292,18 @@ async def get_samples(gbhu, aggregate=True):
     sample_merged = sample_merged.rename(columns=COLUMN_MAPPER_SA)
     sample_merged['layer_composition'] = sample_merged['layer_composition'].map(lambda x: str(x).lower())
     
+    sample_merged = sample_merged.drop(columns=
+                                       ['lagposisjon', 'prøvemetode', 'labanalyse', 'boretlengde', 
+                                        'geotekniskproveseriedel', 'observasjonkode', 
+                                        'aksieldeformasjon', 'densitetprøvetaking', 'opphav', 'høydereferanse', 
+                                        'opprettetdato', 'geotekniskmetode', 'boretazimuth', 'borethelningsgrad', 
+                                        'boretlengdetilberg', 'undersøkelsestart','forboretlengde', 'stoppkode', 
+                                        'forboretstartlengde'], 
+                                        errors="ignore")
+
     if len(sample_merged) > 0 and aggregate:
         sample_merged = aggregate_samples(sample_merged)
+        
 
     samples_gdf = gpd.GeoDataFrame(sample_merged, crs=bh.crs) if len(sample_merged) > 0 else None
 
@@ -312,11 +322,10 @@ async def get_samples(gbhu, aggregate=True):
     return samples_gdf
 
 
-def aggregate_samples(samples_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'prøveserieid') -> gpd.GeoDataFrame:
     
     quick_clay_keywords = ["quick", "kvikk", "sprøbrudd"]
     
-    default_agg_func = 'min'
     def take_any(x):
         return x.iloc[0]
     def clf(x):
@@ -325,24 +334,24 @@ def aggregate_samples(samples_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             if any(kwd in xx.lower() for kwd in quick_clay_keywords):
                 return "quick_clay"
         return 'other'
+    default_agg_func = take_any
 
     agg_funcs = {
         'water_content': 'mean',    # Sumar los valores de la columna A
         'layer_composition': clf,
         'liquid_limit': 'mean', 
         'plastic_limit': 'mean',
-        'name': take_any,
-        'prøveserieid': take_any, 
-        'location_id': take_any, 
-        'geometry': take_any,
-        'location_name': take_any, 
+        'strength_undisturbed': 'min',
+        'strength_undrained': 'min',
+        'strength_remoulded': 'min',
+
     }
 
 
     # Crear un diccionario de funciones de agregación que incluya la función por defecto
     agg_funcs_with_default = {col: agg_funcs.get(col, default_agg_func) for col in samples_gdf.columns}
-    samples = samples_gdf.groupby('prøveseriedelid', as_index=False).agg(agg_funcs_with_default)
-    
+    samples = samples_gdf.groupby(id_field, as_index=False).agg(agg_funcs_with_default)
+
 
     return samples
 
