@@ -22,6 +22,7 @@ COLUMN_MAPPER_BH = cfg["nadag"]["column_mapper_borehole"]
 COLUMN_MAPPER_SA = cfg["nadag"]["column_mapper_samples"]
 SAMPLE_COLUMNS = cfg["nadag"]["columns_samples"]
 TIMEOUT = cfg["nadag"]["timeout"]
+QCL_KWD = ["quick", "kvikk", "sprøbrudd"]
 
 collections = requests.get(base_url).json()
 valid_crs = {int(xx.split("/")[-1]):xx for xx in collections["crs"] if xx.split("/")[-1].isnumeric()}
@@ -305,8 +306,9 @@ async def get_samples(gbhu, aggregate=True):
         if aggregate:
             sample_merged = aggregate_samples(sample_merged)
         else:
+            
             sample_merged["layer_composition"] = sample_merged.layer_composition.map(
-                lambda x: "quick_clay" if any(kwd in x.lower() for kwd in ["quick", "kvikk", "sprøbrudd"]) else "other"
+                _clf_single
                 )
         
 
@@ -327,25 +329,39 @@ async def get_samples(gbhu, aggregate=True):
     return samples_gdf
 
 
+def _clf_aggr(x):
+    values = x.unique()
+    if (values=="nan").all():
+        return "nothing"
+    else:
+        for xx in values:
+            if any(kwd in xx.lower() for kwd in QCL_KWD):
+                return "quick_clay"
+        return 'other'
+        
+
+def _clf_single(x):
+    if x == "nan":
+        return "nothing"
+    if any(kwd in x.lower() for kwd in QCL_KWD):
+        return "quick_clay"
+    else:
+        return "other"
+
+
+
 def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'prøveseriedelid') -> gpd.GeoDataFrame:
     
-    quick_clay_keywords = ["quick", "kvikk", "sprøbrudd"]
     
     def take_any(x):
         return x.iloc[0]
     
-    def clf(x):
-        values = x.unique()
-        for xx in values:
-            if any(kwd in xx.lower() for kwd in quick_clay_keywords):
-                return "quick_clay"
-        return 'other'
     
     default_agg_func = take_any
 
     agg_funcs = {
         'water_content': 'mean',    # Sumar los valores de la columna A
-        'layer_composition': clf,
+        'layer_composition': _clf_aggr,
         'liquid_limit': 'mean', 
         'plastic_limit': 'mean',
         'strength_undisturbed': 'min',
