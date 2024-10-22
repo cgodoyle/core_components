@@ -301,8 +301,13 @@ async def get_samples(gbhu, aggregate=True):
                                         'forboretstartlengde'], 
                                         errors="ignore")
 
-    if len(sample_merged) > 0 and aggregate:
-        sample_merged = aggregate_samples(sample_merged)
+    if len(sample_merged) > 0:
+        if aggregate:
+            sample_merged = aggregate_samples(sample_merged)
+        else:
+            sample_merged["layer_composition"] = sample_merged.layer_composition.map(
+                lambda x: "quick_clay" if any(kwd in x.lower() for kwd in ["quick", "kvikk", "sprøbrudd"]) else "other"
+                )
         
 
     samples_gdf = gpd.GeoDataFrame(sample_merged, crs=bh.crs) if len(sample_merged) > 0 else None
@@ -322,18 +327,20 @@ async def get_samples(gbhu, aggregate=True):
     return samples_gdf
 
 
-def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'prøveserieid') -> gpd.GeoDataFrame:
+def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'prøveseriedelid') -> gpd.GeoDataFrame:
     
     quick_clay_keywords = ["quick", "kvikk", "sprøbrudd"]
     
     def take_any(x):
         return x.iloc[0]
+    
     def clf(x):
         values = x.unique()
         for xx in values:
             if any(kwd in xx.lower() for kwd in quick_clay_keywords):
                 return "quick_clay"
         return 'other'
+    
     default_agg_func = take_any
 
     agg_funcs = {
