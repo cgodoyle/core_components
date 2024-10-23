@@ -177,8 +177,6 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         boreholes_out = pd.concat(borehole_list)
         boreholes_out = boreholes_out.reset_index(drop=True)
         
-        # boreholes_out["depth_rock"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].boretLengdeTilBerg.get("borlengdeTilBerg"))
-        # boreholes_out["depth_rock_quality"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].boretLengdeTilBerg.get("borlengdeKvalitet"))
         boreholes_out = _get_depth_rock_boreholes(boreholes_out, gbhu)
         boreholes_out["geometry"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["geometry"])
         boreholes_out[["x", "y"]] = boreholes_out["geometry"].get_coordinates()
@@ -195,18 +193,22 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
 
 def _get_depth_rock_boreholes(boreholes_df, gbhu_df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     boreholes = boreholes_df.copy()
-    for item in boreholes.itertuples():
-        mid = item.method_id
-        gg = gbhu_df.query("lokalId == @mid").iloc[0]
-        if isinstance(gg.boretLengdeTilBerg, dict):
-            depth_rock_value = gg.boretLengdeTilBerg.get("borlengdeTilBerg")
-            depth_rock_quality_value = gg.boretLengdeTilBerg.get("borlengdeKvalitet")
+    if "boretLengdeTilBerg" not in gbhu_df.columns:
+        boreholes["depth_rock"] = np.nan
+        boreholes["depth_rock_quality"] = np.nan
+    else:
+        for item in boreholes.itertuples():
+            mid = item.method_id
+            gg = gbhu_df.query("lokalId == @mid").iloc[0]
+            if isinstance(gg.boretLengdeTilBerg, dict):
+                depth_rock_value = gg.boretLengdeTilBerg.get("borlengdeTilBerg")
+                depth_rock_quality_value = gg.boretLengdeTilBerg.get("borlengdeKvalitet")
 
-            boreholes.loc[item.Index, "depth_rock"] = float(depth_rock_value) if depth_rock_value is not None else np.nan
-            boreholes.loc[item.Index, "depth_rock_quality"]  = int(depth_rock_quality_value) if depth_rock_quality_value is not None else np.nan
-        else:
-            boreholes.loc[item.Index, "depth_rock"] = np.nan
-            boreholes.loc[item.Index, "depth_rock_quality"] = np.nan
+                boreholes.loc[item.Index, "depth_rock"] = float(depth_rock_value) if depth_rock_value is not None else np.nan
+                boreholes.loc[item.Index, "depth_rock_quality"]  = int(depth_rock_quality_value) if depth_rock_quality_value is not None else np.nan
+            else:
+                boreholes.loc[item.Index, "depth_rock"] = np.nan
+                boreholes.loc[item.Index, "depth_rock_quality"] = np.nan
     return boreholes
 
 def get_collection(collection, bounds, limit = 1000):
