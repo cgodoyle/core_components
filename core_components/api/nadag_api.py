@@ -199,8 +199,11 @@ def _get_depth_rock_boreholes(boreholes_df, gbhu_df: gpd.GeoDataFrame) -> gpd.Ge
         mid = item.method_id
         gg = gbhu_df.query("lokalId == @mid").iloc[0]
         if isinstance(gg.boretLengdeTilBerg, dict):
-            boreholes.loc[item.Index, "depth_rock"] = gg.boretLengdeTilBerg.get("borlengdeTilBerg")
-            boreholes.loc[item.Index, "depth_rock_quality"]  = gg.boretLengdeTilBerg.get("borlengdeKvalitet")
+            depth_rock_value = gg.boretLengdeTilBerg.get("borlengdeTilBerg")
+            depth_rock_quality_value = gg.boretLengdeTilBerg.get("borlengdeKvalitet")
+
+            boreholes.loc[item.Index, "depth_rock"] = float(depth_rock_value) if depth_rock_value is not None else np.nan
+            boreholes.loc[item.Index, "depth_rock_quality"]  = int(depth_rock_quality_value) if depth_rock_quality_value is not None else np.nan
         else:
             boreholes.loc[item.Index, "depth_rock"] = np.nan
             boreholes.loc[item.Index, "depth_rock_quality"] = np.nan
