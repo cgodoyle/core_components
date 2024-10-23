@@ -169,17 +169,24 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         boreholes['method_type'] = method
         boreholes['method_id'] = list(ref.keys())
         boreholes['depth'] = [xx["depth"].max() for xx in data]
-        boreholes[["x", "y"]] = list(map(lambda x: gbhu.query("lokalId == @x").get_coordinates().values.squeeze().tolist(), ref.keys()))
-        boreholes['z'] = list(map(lambda x: gbhu.query("lokalId == @x")['høyde'].values.squeeze().tolist(), ref.keys()))
-        boreholes["geometry"] = list(map(lambda x: gbhu.query("lokalId == @x").geometry.iloc[0], ref.keys()))
-        boreholes["location_name"] = list(map(lambda x: get_href(gbhu.query("lokalId == @x").iloc[0].undersPkt["href"])["properties"]["boreNr"], ref.keys()))
         boreholes["method_status_id"] = 3
         boreholes["method_status"] = "conducted"
         borehole_list.append(boreholes)
 
-    if len(borehole_list) >0:
+    if len(borehole_list) > 0:
         boreholes_out = pd.concat(borehole_list)
         boreholes_out = boreholes_out.reset_index(drop=True)
+
+        boreholes_out["depth_rock"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].boretLengdeTilBerg.get("borlengdeTilBerg"))
+        boreholes_out["depth_rock_quality"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].boretLengdeTilBerg.get("borlengdeKvalitet"))
+        boreholes_out["geometry"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["geometry"])
+        boreholes_out[["x", "y"]] = boreholes_out["geometry"].get_coordinates()
+        boreholes_out['z'] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["høyde"])
+        
+        
+        upunkt_href = await get_href_list(boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].undersPkt["href"]).to_list())
+        boreholes_out["location_name"] = [vv["properties"]["boreNr"] for vv in upunkt_href]
+
     else:
         boreholes_out = None
     return boreholes_out
