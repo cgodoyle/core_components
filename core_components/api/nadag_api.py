@@ -176,9 +176,10 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
     if len(borehole_list) > 0:
         boreholes_out = pd.concat(borehole_list)
         boreholes_out = boreholes_out.reset_index(drop=True)
-
-        boreholes_out["depth_rock"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].boretLengdeTilBerg.get("borlengdeTilBerg"))
-        boreholes_out["depth_rock_quality"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].boretLengdeTilBerg.get("borlengdeKvalitet"))
+        
+        # boreholes_out["depth_rock"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].boretLengdeTilBerg.get("borlengdeTilBerg"))
+        # boreholes_out["depth_rock_quality"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].boretLengdeTilBerg.get("borlengdeKvalitet"))
+        boreholes_out = _get_depth_rock_boreholes(boreholes_out, gbhu)
         boreholes_out["geometry"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["geometry"])
         boreholes_out[["x", "y"]] = boreholes_out["geometry"].get_coordinates()
         boreholes_out['z'] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["høyde"])
@@ -191,6 +192,19 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         boreholes_out = None
     return boreholes_out
 
+
+def _get_depth_rock_boreholes(boreholes_df, gbhu_df: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    boreholes = boreholes_df.copy()
+    for item in boreholes.itertuples():
+        mid = item.method_id
+        gg = gbhu_df.query("lokalId == @mid").iloc[0]
+        if isinstance(gg.boretLengdeTilBerg, dict):
+            boreholes.loc[item.Index, "depth_rock"] = gg.boretLengdeTilBerg.get("borlengdeTilBerg")
+            boreholes.loc[item.Index, "depth_rock_quality"]  = gg.boretLengdeTilBerg.get("borlengdeKvalitet")
+        else:
+            boreholes.loc[item.Index, "depth_rock"] = np.nan
+            boreholes.loc[item.Index, "depth_rock_quality"] = np.nan
+    return boreholes
 
 def get_collection(collection, bounds, limit = 1000):
     """
