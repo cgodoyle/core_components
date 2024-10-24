@@ -158,7 +158,6 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
 
     logger.info("creating gdf")
     for ref, data, method in zip([ss_href_list, ks_href_list, ts_href_list],[ss, ks, ts], ['rp', 'tot', 'cpt']):
-        logger.info(method)
         if len(data) == 0:
             continue
         boreholes = gpd.GeoDataFrame(columns=['method_type', 'geometry', 'location_name', 'data', 'x', 'y', 'z','depth', 
@@ -263,7 +262,7 @@ def get_collection(collection, bounds, limit = 1000):
         return gpd.GeoDataFrame.from_features(data_list, crs=CRS)
 
 
-async def get_samples(gbhu, aggregate=True):
+async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.GeoDataFrame:
     gbhu = gbhu.rename(columns={"metode-GeotekniskPrøveserie": "ps"})
     if "ps" not in gbhu.columns:
         return None
@@ -331,7 +330,7 @@ async def get_samples(gbhu, aggregate=True):
     if len(sample_merged) > 0:
         if aggregate:
             sample_merged = aggregate_samples(sample_merged)
-        else:
+        elif map_layer_composition:
             
             sample_merged["layer_composition"] = sample_merged.layer_composition.map(
                 _clf_single
@@ -357,7 +356,7 @@ async def get_samples(gbhu, aggregate=True):
 
 def _clf_aggr(x):
     values = x.unique()
-    if (values=="nan").all():
+    if all([vv in ("nan", "none") for vv in values]):
         return "nothing"
     else:
         for xx in values:
@@ -367,7 +366,7 @@ def _clf_aggr(x):
         
 
 def _clf_single(x):
-    if x == "nan":
+    if x in ("nan", "none"):
         return "nothing"
     if any(kwd in x.lower() for kwd in QCL_KWD):
         return "quick_clay"
