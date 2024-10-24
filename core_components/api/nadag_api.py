@@ -197,7 +197,7 @@ def _get_depth_rock_boreholes(boreholes_df, gbhu_df: gpd.GeoDataFrame) -> gpd.Ge
         boreholes["depth_rock_quality"] = np.nan
     else:
         for item in boreholes.itertuples():
-            mid = item.method_id
+            mid = item.method_id  # noqa: F841
             gg = gbhu_df.query("lokalId == @mid").iloc[0]
             if isinstance(gg.boretLengdeTilBerg, dict):
                 depth_rock_value = gg.boretLengdeTilBerg.get("borlengdeTilBerg")
