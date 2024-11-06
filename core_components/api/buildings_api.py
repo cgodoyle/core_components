@@ -24,12 +24,14 @@ def check_api_status() -> bool:
     Returns:
         bool: True if the API is up and running, False otherwise
     """
-    response = requests.get(URL, params={"service":"WFS", 
-                                         "request": "GetCapabilities"})
-    if response.status_code == 200:
-        return True
-    else:
+    try:
+        response = requests.get(URL, timeout=5,
+                                params={"service":"WFS", 
+                                        "request": "GetCapabilities"})
+    
+    except requests.exceptions.ReadTimeout:
         return False
+    return response.status_code == 200
 
 
 def get_building_points(bounds:tuple) -> gpd.GeoDataFrame:

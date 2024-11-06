@@ -24,10 +24,62 @@ SAMPLE_COLUMNS = cfg["nadag"]["columns_samples"]
 TIMEOUT = cfg["nadag"]["timeout"]
 QCL_KWD = ["quick", "kvikk", "sprøbrudd"]
 
-collections = requests.get(base_url).json()
-valid_crs = {int(xx.split("/")[-1]):xx for xx in collections["crs"] if xx.split("/")[-1].isnumeric()}
-valid_collections = [xx["id"] for xx in collections["collections"]]
+# collections = requests.get(base_url).json()
+# valid_crs = {int(xx.split("/")[-1]):xx for xx in collections["crs"] if xx.split("/")[-1].isnumeric()}
+# valid_collections = [xx["id"] for xx in collections["collections"]]
 
+
+def check_api_status():
+    try:
+        response = requests.get(base_url, timeout=5)
+    except requests.exceptions.ReadTimeout:
+        return False
+    return response.status_code == 200
+
+
+def get_api_data():
+    if not check_api_status():
+        valid_collections = [
+            'deformasjonmaling',
+            'dynamisksondering',
+            'dynamisksonderingdata',
+            'geotekniskborehull',
+            'geotekniskborehullunders',
+            'geotekniskdokument',
+            'geotekniskfeltunders',
+            'geotekniskproveserie',
+            'geotekniskproveseriedel',
+            'geotekniskproveseriedeldata',
+            'geoteknisktolketlag',
+            'geoteknisktolketpunkt',
+            'geotekniskunders',
+            'grunnvanndata',
+            'grunnvannmaling',
+            'kjerneprove',
+            'kombinasjonsondering',
+            'kombinasjonsonderingdata',
+            'miljoundersokelse',
+            'poretrykkdatainsitu',
+            'statisksondering',
+            'statisksonderingdata',
+            'trykksondering',
+            'trykksonderingdata',
+            'vingeboring',
+            'vingeboringdata'
+            ]
+        valid_crs = {
+            25833: 'http://www.opengis.net/def/crs/EPSG/0/25833',
+            25832: 'http://www.opengis.net/def/crs/EPSG/0/25832',
+            4258: 'http://www.opengis.net/def/crs/EPSG/0/4258',
+            3857: 'http://www.opengis.net/def/crs/EPSG/0/3857',
+            4326: 'http://www.opengis.net/def/crs/EPSG/0/4326'}
+    else:
+        collections = requests.get(base_url).json()
+        valid_crs = {int(xx.split("/")[-1]):xx for xx in collections["crs"] if xx.split("/")[-1].isnumeric()}
+        valid_collections = [xx["id"] for xx in collections["collections"]]
+    return valid_collections, valid_crs
+
+valid_collections, valid_crs = get_api_data()
 
 def get_href(href):
     response = requests.get(href)
