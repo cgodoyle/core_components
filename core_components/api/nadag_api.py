@@ -279,6 +279,65 @@ def get_collection(collection, bounds, limit = 1000):
     
     bbox = gpd.GeoDataFrame(geometry=[box(*bounds)], crs=CRS).to_crs(CRS_API).total_bounds
     url = URL.format(collection=collection)
+
+    ss = f"{bbox[0]} {bbox[1]},{bbox[0]} {bbox[3]},{bbox[2]} {bbox[3]},{bbox[2]} {bbox[1]},{bbox[0]} {bbox[1]}"
+
+
+    params = {
+        'filter-lang': 'cql2-text',
+        'filter': f"S_INTERSECTS(posisjon,POLYGON(({ss})))",
+        'crs': valid_crs[CRS],
+        'limit': limit
+    }
+
+
+    data_list = []
+    next_page = True
+    cont = 0
+
+    while next_page:
+        cont += 1
+        response = requests.get(url, params if cont == 1 else None)
+        # print(response.url)
+        response.raise_for_status()
+        try:
+            data = response.json()
+        except Exception as e:
+            print("Error in response")
+            print(requests.Request('GET', url).prepare().url)
+            raise e
+
+
+        links_rel = list(map(lambda x: x.get("rel"), data["links"]))
+        if "next" in links_rel:
+            url = list(filter(lambda x: x.get("rel") == "next", data["links"]))[0]["href"]
+            next_page = True
+        else:
+            next_page = False
+        data_list.extend(data["features"])
+    if len(data_list) == 0:
+        return gpd.GeoDataFrame()
+    else:
+        return gpd.GeoDataFrame.from_features(data_list, crs=CRS)
+    
+
+def get_collection_bbox(collection, bounds, limit = 1000):
+    """
+    Fetches a collection of geospatial data within specified bounds from the NADAG API.
+    see documentation at https://ogcapitest.ngu.no/rest/services/grunnundersokelser_utvidet
+    Args:
+        collection (str): The name of the collection to fetch. For example, 'geotekniskborehullunders'.
+        bounds (tuple): A tuple representing the bounding box coordinates (minx, miny, maxx, maxy).
+        limit (int, optional): The maximum number of records to fetch per request. Defaults to 1000.
+    Returns:
+        gpd.GeoDataFrame: A GeoDataFrame containing the fetched geospatial data. Returns an empty GeoDataFrame if no data is found.
+    Raises:
+        requests.exceptions.RequestException: If there is an issue with the HTTP request.
+        ValueError: If the response cannot be parsed as JSON.
+    """
+    
+    bbox = gpd.GeoDataFrame(geometry=[box(*bounds)], crs=CRS).to_crs(CRS_API).total_bounds
+    url = URL.format(collection=collection)
     params = {
         'bbox': ','.join(map(str, bbox)),
         'crs': valid_crs[CRS],
@@ -292,6 +351,7 @@ def get_collection(collection, bounds, limit = 1000):
     while next_page:
         cont += 1
         response = requests.get(url, params=params if cont == 1 else None)
+        print(response.url)
         response.raise_for_status()
         try:
             data = response.json()

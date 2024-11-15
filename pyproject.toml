@@ -1,6 +1,6 @@
 [project]
 name = "core-components"
-version = "0.1.11"
+version = "0.1.12"
 description = "abstract classes and reusable components for (my) python webapps"
 authors = [
   {name = "Cristian Godoy", email = "crgo@nve.no" } 
