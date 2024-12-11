@@ -1,5 +1,6 @@
 import requests
 import io
+from urllib3.exceptions import MaxRetryError
 
 import geopandas as gpd
 from shapely.geometry import box
@@ -29,7 +30,7 @@ def check_api_status() -> bool:
                                 params={"service":"WFS", 
                                         "request": "GetCapabilities"})
     
-    except requests.exceptions.ReadTimeout:
+    except (requests.exceptions.ReadTimeout, MaxRetryError):
         return False
     return response.status_code == 200
 
