@@ -30,7 +30,10 @@ def check_api_status() -> bool:
                                 params={"service":"WFS", 
                                         "request": "GetCapabilities"})
     
-    except (requests.exceptions.ReadTimeout, MaxRetryError):
+    except (requests.exceptions.ReadTimeout, MaxRetryError, requests.exceptions.ConnectionError, requests.exceptions.SSLError):
+        return False
+    except Exception as e:
+        logger.error(f"New error when checking api status: {e}")
         return False
     return response.status_code == 200
 

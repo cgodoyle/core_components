@@ -34,6 +34,9 @@ def check_api_status():
         response = requests.get(base_url, timeout=5)
     except requests.exceptions.ReadTimeout:
         return False
+    except Exception as e:
+        logger.error(f"New error when checking api status: {e}")
+        return False
     return response.status_code == 200
 
 

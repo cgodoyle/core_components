@@ -30,7 +30,7 @@ class BtnLoader(ipyvuetify.Btn):
 class Loader(ipyvuetify.Container):
     def __init__(self, text="Loading..."):
         self.loader = ipyvuetify.ProgressLinear(indeterminate=True, height="12", color="red")
-        self.text_widget = self.text_widget = ipywidgets.HTML(value=f"<span>{text}</span>")
+        self.text_widget = ipywidgets.HTML(value=f"<span>{text}</span>")
         super().__init__(children=[self.loader, self.text_widget])
     
     def set_text(self, text):
