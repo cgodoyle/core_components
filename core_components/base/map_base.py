@@ -1,6 +1,7 @@
 import ipyleaflet
 from shapely.geometry import LineString, Polygon
 import numpy as np
+import geopandas as gpd
 
 
 from core_components.base.gui_base import WMSComponent
@@ -106,7 +107,31 @@ class Map(ipyleaflet.Map):
         hillshade.base = True
 
         return [osm, gcbilder, basis]
-    
+
+
+    def draw_polylines(self, gdf:gpd.GeoDataFrame, crs=25833)->None:
+        #TODO: Geometry check
+
+
+        features = []
+        for profile in gdf.itertuples():
+            coordinates = [list(xx) for xx in list(profile.geometry.coords)]
+            features.append(
+                {'type': 'Feature',
+                'properties': {'style': {'stroke': True,
+                'color': '#3388ff',
+                'weight': 4,
+                'opacity': 0.5,
+                'fill': False,
+                'clickable': True}},
+                'geometry': {'type': 'LineString',
+                'coordinates': coordinates}}
+            )
+             
+        self.map_draw_control.data = features
+        self.center=gdf.dissolve().to_crs(crs).centroid.to_crs(4326).get_coordinates().values.squeeze().tolist()[::-1]
+        self.zoom = 15
+
 
     def show(self, height: int = 600) -> None:
         
