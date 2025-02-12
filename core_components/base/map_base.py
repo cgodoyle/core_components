@@ -68,9 +68,15 @@ class Map(ipyleaflet.Map):
         self.add(wms_widget)
     
 
-    def get_polylines(self):
+    def get_polylines(self, name=None):
         data = self.map_draw_control.data
-        lines = [LineString(xx['geometry']["coordinates"]) for xx in data if xx['geometry']["type"] == 'LineString']
+        for dd in data:
+            if "name" not in dd.keys():
+                dd["name"] = "profile"
+        if name is None:
+            lines = [LineString(xx['geometry']["coordinates"]) for xx in data if xx['geometry']["type"] == 'LineString']
+        else:
+            lines = [LineString(xx['geometry']["coordinates"]) for xx in data if xx['geometry']["type"] == 'LineString' and xx['name'] == name]
         return lines
 
 
@@ -109,27 +115,34 @@ class Map(ipyleaflet.Map):
         return [osm, gcbilder, basis]
 
 
-    def draw_polylines(self, gdf:gpd.GeoDataFrame, crs=25833)->None:
+    def draw_polylines(self, gdf:gpd.GeoDataFrame, crs=25833, name="profile")->None:
         #TODO: Geometry check
 
-
-        features = []
+        # print(self.map_draw_control.data)
+        features = []#self.map_draw_control.data # before it was an empty list
         for profile in gdf.itertuples():
             coordinates = [list(xx) for xx in list(profile.geometry.coords)]
             features.append(
                 {'type': 'Feature',
-                'properties': {'style': {'stroke': True,
-                'color': '#3388ff',
-                'weight': 4,
-                'opacity': 0.5,
-                'fill': False,
-                'clickable': True}},
-                'geometry': {'type': 'LineString',
-                'coordinates': coordinates}}
+                'properties': {
+                    'style': {
+                        'stroke': True,
+                        'color': '#3388ff' if name == "profile" else '#ff0000',
+                        'weight': 4,
+                        'opacity': 0.5,
+                        'fill': False,
+                        'clickable': True
+                        }
+                        },
+                'geometry': {
+                    'type': 'LineString',
+                    'coordinates': coordinates},
+                'name': name
+                }
             )
              
         self.map_draw_control.data = features
-        self.center=gdf.dissolve().to_crs(crs).centroid.to_crs(4326).get_coordinates().values.squeeze().tolist()[::-1]
+        self.center=gdf.dissolve().to_crs(crs).representative_point().to_crs(4326).get_coordinates().values.squeeze().tolist()[::-1]
         self.zoom = 15
 
 
