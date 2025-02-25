@@ -184,7 +184,9 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
     Returns:
         gpd.GeoDataFrame or None: A GeoDataFrame containing processed borehole sounding data, or None if no data is available.
     """
-
+    if borehullunders.empty:
+        return None
+    
     gbhu = borehullunders.copy()
     gbhu = gbhu.rename(columns={"metode-StatiskSondering": "ss",
                                 "metode-KombinasjonSondering": "ks",
@@ -195,6 +197,8 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
             gbhu[xx] = None
 
     gbhu["lokalId"] = gbhu.identifikasjon.map(lambda x: x["lokalId"])
+
+    method_to_location_dict = gbhu.set_index('lokalId')['underspkt_fk'].to_dict()
 
     ss_href_list = {xx.lokalId: xx.ss[0]["href"] if isinstance(xx.ss, list) else None for xx in gbhu.dropna(subset=["ss"]).itertuples()}
     ks_href_list = {xx.lokalId: xx.ks[0]["href"] if isinstance(xx.ks, list) else None for xx in gbhu.dropna(subset=["ks"]).itertuples()}
@@ -216,15 +220,18 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         if len(data) == 0:
             continue
         boreholes = gpd.GeoDataFrame(columns=['method_type', 'geometry', 'location_name', 'data', 'x', 'y', 'z','depth', 
-        'method_id', 'method_status', 'method_status_id'], 
+        'method_id', 'method_status', 'method_status_id', 'location_id'], 
         crs=gbhu.crs)
+
+        methods_id = list(ref.keys())
 
         boreholes['data'] = data
         boreholes['method_type'] = method
-        boreholes['method_id'] = list(ref.keys())
+        boreholes['method_id'] = methods_id
         boreholes['depth'] = [xx["depth"].max() for xx in data]
         boreholes["method_status_id"] = 3
         boreholes["method_status"] = "conducted"
+        
         borehole_list.append(boreholes)
 
     if len(borehole_list) > 0:
@@ -235,6 +242,8 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         boreholes_out["geometry"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["geometry"])
         boreholes_out[["x", "y"]] = boreholes_out["geometry"].get_coordinates()
         boreholes_out['z'] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["høyde"])
+        
+        boreholes_out["location_id"] = boreholes_out.method_id.map(method_to_location_dict)
         
         
         upunkt_href = await get_href_list(boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].undersPkt["href"]).to_list())
@@ -383,6 +392,8 @@ async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.G
         return None
     bh = gbhu.dropna(subset=["ps"]).copy()
     bh["lokalId"] = bh.identifikasjon.map(lambda x: x["lokalId"])
+
+    method_to_location_dict = bh.set_index('lokalId')['underspkt_fk'].to_dict()
     
     href_list = list(map(lambda x: x["href"], bh.ps.map(lambda x: x[0])))
     samples = await get_href_list(href_list)
@@ -459,11 +470,14 @@ async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.G
         samples_gdf["method_status_id"] = 3
         samples_gdf["method_type"] = "sa"
         samples_gdf["method_status"] = "conducted"
-        samples_gdf["method_id"] = 4
+        # samples_gdf["method_id"] = 4
 
         samples_gdf[['x', 'y']] = samples_gdf.get_coordinates().round(1)
         samples_gdf["z"] = samples_gdf["location_elevation"]
         samples_gdf["depth"] = (samples_gdf.depth_base + samples_gdf.depth_top)/2
+
+        
+        samples_gdf["location_id"] = samples_gdf.method_id.map(method_to_location_dict)
 
     
     return samples_gdf
@@ -517,6 +531,7 @@ def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'prøveserie
 
 
     return samples
+
 
 
 async def get_data_big_areas(bounds: tuple, max_dist_query:int=2000,

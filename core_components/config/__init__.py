@@ -36,7 +36,9 @@ config = {
             'rotasjonhastighet': 'rotation_rate',
             'slagfrekvens': 'hammering_rate', # ????
             'spylemengde': 'flushing_flow', 
-            'spyletrykk': 'flushing_pressure'},
+            'spyletrykk': 'flushing_pressure',
+            #'geotekniskborehullunders':'location_id',
+            },
         'columns_samples': [
             'lagPosisjon', 'prøveMetode_x', 'labAnalyse', 'boretLengde_x', 'geotekniskproveseriedel', 
             'observasjonKode', 'skjærfasthetOmrørt', 'skjærfasthetUforstyrret', 'vanninnhold', 
@@ -50,7 +52,8 @@ config = {
             'prøvemetode_x': 'prøvemetode',
             'boretlengde_x': 'boretlengde',
             'prøveseriedelnavn': 'name',
-            'geotekniskborehullunders':'location_id',
+            # 'geotekniskborehullunders':'location_id',
+            'geotekniskborehullunders':'method_id',
             'fralengde': 'depth_top',
             'tillengde': 'depth_base',
             'skjærfasthetuforstyrret': 'strength_undisturbed',
