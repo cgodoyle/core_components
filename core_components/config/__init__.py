@@ -23,9 +23,9 @@ config = {
             'anvendtlast': 'penetration_force', 
             'boretlengde': 'depth', 
             'dreiemoment': 'rotation_moment', # ????
-            'kombinasjonsondering_fk': 'method_id',
-            'trykksondering_fk': 'method_id',
-            'statisksondering_fk': 'method_id',
+            'kombinasjonsondering': 'method_id',
+            'trykksondering': 'method_id',
+            'statisksondering': 'method_id',
             'nedpressinghastighet': 'penetration_rate', 
             'nedpressingtrykk': 'qc', # ???? <--- cpt
             'friksjon': 'fs', # ???? <--- cpt
@@ -53,7 +53,8 @@ config = {
             'boretlengde_x': 'boretlengde',
             'prøveseriedelnavn': 'name',
             # 'geotekniskborehullunders':'location_id',
-            'geotekniskborehullunders':'method_id',
+            'geotekniskborehullunders':'gbhu_id',
+            'prøveseriedelid': 'method_id',
             'fralengde': 'depth_top',
             'tillengde': 'depth_base',
             'skjærfasthetuforstyrret': 'strength_undisturbed',

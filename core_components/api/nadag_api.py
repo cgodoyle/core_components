@@ -205,17 +205,14 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
     ts_href_list = {xx.lokalId: xx.ts[0]["href"] if isinstance(xx.ts, list) else None for xx in gbhu.dropna(subset=["ts"]).itertuples()}
     # ps_href_list = {xx.identifikasjon['lokalId']: xx.ps[0]["href"] if isinstance(xx.ps, list) else None for xx in gbhu.dropna(subset=["ps"]).itertuples()}
 
-    logger.info("fetching rp")
     ss = await get_soundings(list(ss_href_list.values()), method = "rp")
-    logger.info("fetching ks")
     ks = await get_soundings(list(ks_href_list.values()), method = "tot")
-    logger.info("fetching cpt")
     ts = await get_soundings(list(ts_href_list.values()), method = "cpt")
     # ps = await get_soundings(list(ps_href_list.values()), method = "prv")
     
     borehole_list = []
 
-    logger.info("creating gdf")
+
     for ref, data, method in zip([ss_href_list, ks_href_list, ts_href_list],[ss, ks, ts], ['rp', 'tot', 'cpt']):
         if len(data) == 0:
             continue
@@ -223,15 +220,17 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         'method_id', 'method_status', 'method_status_id', 'location_id'], 
         crs=gbhu.crs)
 
-        methods_id = list(ref.keys())
+        gbhu_id = list(ref.keys())  # lokalId from geotekniskborehullunders
+        methods_id = list(map(lambda x: x["method_id"].unique()[0], data)) # lokalId from the method 
 
         boreholes['data'] = data
         boreholes['method_type'] = method
+        boreholes['gbhu_id'] = gbhu_id
         boreholes['method_id'] = methods_id
         boreholes['depth'] = [xx["depth"].max() for xx in data]
         boreholes["method_status_id"] = 3
         boreholes["method_status"] = "conducted"
-        
+       
         borehole_list.append(boreholes)
 
     if len(borehole_list) > 0:
@@ -239,14 +238,14 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         boreholes_out = boreholes_out.reset_index(drop=True)
         
         boreholes_out = _get_depth_rock_boreholes(boreholes_out, gbhu)
-        boreholes_out["geometry"] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["geometry"])
+        boreholes_out["geometry"] = boreholes_out.gbhu_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["geometry"])
         boreholes_out[["x", "y"]] = boreholes_out["geometry"].get_coordinates()
-        boreholes_out['z'] = boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["høyde"])
+        boreholes_out['z'] = boreholes_out.gbhu_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0]["høyde"])
         
-        boreholes_out["location_id"] = boreholes_out.method_id.map(method_to_location_dict)
+        boreholes_out["location_id"] = boreholes_out.gbhu_id.map(method_to_location_dict)
         
         
-        upunkt_href = await get_href_list(boreholes_out.method_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].undersPkt["href"]).to_list())
+        upunkt_href = await get_href_list(boreholes_out.gbhu_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].undersPkt["href"]).to_list())
         boreholes_out["location_name"] = [vv["properties"]["boreNr"] for vv in upunkt_href]
 
     else:
@@ -261,8 +260,8 @@ def _get_depth_rock_boreholes(boreholes_df, gbhu_df: gpd.GeoDataFrame) -> gpd.Ge
         boreholes["depth_rock_quality"] = np.nan
     else:
         for item in boreholes.itertuples():
-            mid = item.method_id  # noqa: F841
-            gg = gbhu_df.query("lokalId == @mid").iloc[0]
+            gbhu_id = item.gbhu_id  # noqa: F841
+            gg = gbhu_df.query("lokalId == @gbhu_id").iloc[0]
             if isinstance(gg.boretLengdeTilBerg, dict):
                 depth_rock_value = gg.boretLengdeTilBerg.get("borlengdeTilBerg")
                 depth_rock_quality_value = gg.boretLengdeTilBerg.get("borlengdeKvalitet")
@@ -273,6 +272,7 @@ def _get_depth_rock_boreholes(boreholes_df, gbhu_df: gpd.GeoDataFrame) -> gpd.Ge
                 boreholes.loc[item.Index, "depth_rock"] = np.nan
                 boreholes.loc[item.Index, "depth_rock_quality"] = np.nan
     return boreholes
+
 
 def get_collection(collection, bounds, limit = 1000):
     """
@@ -455,7 +455,9 @@ async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.G
 
     if len(sample_merged) > 0:
         if aggregate:
-            sample_merged = aggregate_samples(sample_merged)
+            logger.info("Aggregating samples")
+            logger.info(sample_merged)
+            sample_merged = aggregate_samples(sample_merged, id_field='method_id')
         elif map_layer_composition:
             
             sample_merged["layer_composition"] = sample_merged.layer_composition.map(
@@ -477,7 +479,7 @@ async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.G
         samples_gdf["depth"] = (samples_gdf.depth_base + samples_gdf.depth_top)/2
 
         
-        samples_gdf["location_id"] = samples_gdf.method_id.map(method_to_location_dict)
+        samples_gdf["location_id"] = samples_gdf.gbhu_id.map(method_to_location_dict)
 
     
     return samples_gdf
@@ -503,10 +505,8 @@ def _clf_single(x):
         return "other"
 
 
-
-def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'prøveseriedelid') -> gpd.GeoDataFrame:
-    
-    
+def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'method_id') -> gpd.GeoDataFrame:
+    # prøveseriedelid is now used as method_id instead of geotekniskborehullunders_id
     def take_any(x):
         return x.iloc[0]
     
@@ -532,6 +532,33 @@ def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'prøveserie
 
     return samples
 
+
+def get_sounding_urls(item: pd.Series) -> dict:
+    """
+    Get the urls for the different tables in the NADAG API for a given item.
+    A sounding can be either a borehole or a sample.
+    
+    Args:
+        item (pd.Series): A Series containing the sounding data (a item/slice in a DataFrame).
+    Returns:
+        dict: A dictionary containing the urls for the different tables in the NADAG
+            API for the given item.
+
+    """
+    
+    method_id = item.method_id
+    location_id = item.location_id
+    gbhu_id = item.gbhu_id
+
+    method_type = item.method_type
+    method_parser = {"tot": "kombinasjonsondering", "rp": "statisksondering", "cpt": "trykksondering", "sa": "geotekniskproveseriedel"}
+    method_nadag = method_parser.get(method_type)
+    out = dict(
+        geotekniskborehullunders = f"{base_url}/geotekniskborehullunders/items/{gbhu_id}",
+        method =  f"{base_url}/{method_nadag}/items/{method_id}",
+        location = f"{base_url}/geotekniskborehull/items/{location_id}"
+    )
+    return out
 
 
 async def get_data_big_areas(bounds: tuple, max_dist_query:int=2000,
