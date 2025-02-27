@@ -176,6 +176,13 @@ async def get_soundings(soudings_href_list, method):
     return ks_data_df
 
 
+def get_method_id(data):
+    if type(data) is gpd.GeoDataFrame and not data.empty:
+        return data["method_id"].unique()[0]
+    else:
+        return None
+
+
 async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Fetches and processes sounding data for given borehole investigations.
@@ -221,7 +228,7 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         crs=gbhu.crs)
 
         gbhu_id = list(ref.keys())  # lokalId from geotekniskborehullunders
-        methods_id = list(map(lambda x: x["method_id"].unique()[0], data)) # lokalId from the method 
+        methods_id = list(map(get_method_id, data)) # lokalId from the method 
 
         boreholes['data'] = data
         boreholes['method_type'] = method
