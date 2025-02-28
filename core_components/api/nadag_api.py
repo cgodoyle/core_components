@@ -177,7 +177,7 @@ async def get_soundings(soudings_href_list, method):
 
 
 def get_method_id(data):
-    if type(data) is gpd.GeoDataFrame and not data.empty:
+    if isinstance(data, (gpd.GeoDataFrame, pd.DataFrame)) and not data.empty:
         return data["method_id"].unique()[0]
     else:
         return None
