@@ -462,8 +462,7 @@ async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.G
 
     if len(sample_merged) > 0:
         if aggregate:
-            logger.info("Aggregating samples")
-            logger.info(sample_merged)
+
             sample_merged = aggregate_samples(sample_merged, id_field='method_id')
         elif map_layer_composition:
             
