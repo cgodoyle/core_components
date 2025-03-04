@@ -257,6 +257,10 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
 
     else:
         boreholes_out = None
+    
+    geotekniskborehull_list = await get_href_list(boreholes_out.apply(lambda x: get_sounding_urls(x)["location"], axis=1).to_list())
+    boreholes_out["geotekniskunders_id"] = list(map(lambda x: x["properties"]["opprinneligGeotekniskUndersID"], geotekniskborehull_list))
+
     return boreholes_out
 
 
@@ -555,6 +559,7 @@ def get_sounding_urls(item: pd.Series) -> dict:
     method_id = item.method_id
     location_id = item.location_id
     gbhu_id = item.gbhu_id
+    geotekniskunders_id = item.geotekniskunders_id
 
     method_type = item.method_type
     method_parser = {"tot": "kombinasjonsondering", "rp": "statisksondering", "cpt": "trykksondering", "sa": "geotekniskproveseriedel"}
@@ -562,7 +567,8 @@ def get_sounding_urls(item: pd.Series) -> dict:
     out = dict(
         geotekniskborehullunders = f"{base_url}/geotekniskborehullunders/items/{gbhu_id}",
         method =  f"{base_url}/{method_nadag}/items/{method_id}",
-        location = f"{base_url}/geotekniskborehull/items/{location_id}"
+        location = f"{base_url}/geotekniskborehull/items/{location_id}",
+        documents = f"{base_url}/geotekniskdokument/items?tilhorergu_fk={geotekniskunders_id}"
     )
     return out
 
