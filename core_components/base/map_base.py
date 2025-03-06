@@ -1,5 +1,5 @@
 import ipyleaflet
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Polygon, box
 import numpy as np
 import geopandas as gpd
 
@@ -85,6 +85,11 @@ class Map(ipyleaflet.Map):
         polygons = [Polygon(np.squeeze(xx['geometry']["coordinates"])) for xx in data if xx['geometry']["type"] == 'Polygon']
         return polygons
     
+
+    def get_total_bounds(self, crs=25833):
+        bounds = self.bounds
+        return gpd.GeoDataFrame(geometry=[box(bounds[0][1], bounds[0][0], bounds[1][1], bounds[1][0])], crs=4326).to_crs(crs).total_bounds
+
 
     @staticmethod
     def basemap_layers() -> list:
