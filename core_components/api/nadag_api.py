@@ -465,6 +465,7 @@ async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.G
                                         errors="ignore")
 
     if len(sample_merged) > 0:
+        sample_merged["layer_composition_full"] = sample_merged["layer_composition"]
         if aggregate:
 
             sample_merged = aggregate_samples(sample_merged, id_field='method_id')
@@ -520,12 +521,18 @@ def aggregate_samples(samples_gdf: gpd.GeoDataFrame, id_field:str = 'method_id')
     def take_any(x):
         return x.iloc[0]
     
+    def join_texts(x):
+        # Filter out None, "nan", "none", and empty strings
+        filtered_x = [item for item in x if item is not None and str(item).lower() not in ("nan", "none", "") and str(item).strip() != ""]
+        # Join with ' | ' if there are any values left, otherwise return "-"
+        return ' | '.join(filtered_x) if filtered_x else "-"
     
     default_agg_func = take_any
 
     agg_funcs = {
         'water_content': 'mean',    # Sumar los valores de la columna A
         'layer_composition': _clf_aggr,
+        'layer_composition_full': join_texts,
         'liquid_limit': 'mean', 
         'plastic_limit': 'mean',
         'strength_undisturbed': 'min',
