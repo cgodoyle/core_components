@@ -120,7 +120,7 @@ class Map(ipyleaflet.Map):
         return [osm, gcbilder, basis]
 
 
-    def draw_polylines(self, gdf:gpd.GeoDataFrame, crs=25833, name="profile")->None:
+    def draw_polylines(self, gdf:gpd.GeoDataFrame, crs=25833, name="profile", center_on_drawing=False)->None:
         #TODO: Geometry check
 
         # print(self.map_draw_control.data)
@@ -147,8 +147,9 @@ class Map(ipyleaflet.Map):
             )
              
         self.map_draw_control.data = features
-        self.center=gdf.dissolve().to_crs(crs).representative_point().to_crs(4326).get_coordinates().values.squeeze().tolist()[::-1]
-        self.zoom = 15
+        if center_on_drawing:
+            self.center=gdf.dissolve().to_crs(crs).representative_point().to_crs(4326).get_coordinates().values.squeeze().tolist()[::-1]
+            self.zoom = 15
 
 
     def show(self, height: int = 600) -> None:
