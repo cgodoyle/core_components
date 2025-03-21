@@ -212,11 +212,17 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
     ts_href_list = {xx.lokalId: xx.ts[0]["href"] if isinstance(xx.ts, list) else None for xx in gbhu.dropna(subset=["ts"]).itertuples()}
     # ps_href_list = {xx.identifikasjon['lokalId']: xx.ps[0]["href"] if isinstance(xx.ps, list) else None for xx in gbhu.dropna(subset=["ps"]).itertuples()}
 
-    ss = await get_soundings(list(ss_href_list.values()), method = "rp")
-    ks = await get_soundings(list(ks_href_list.values()), method = "tot")
-    ts = await get_soundings(list(ts_href_list.values()), method = "cpt")
+    # ss = await get_soundings(list(ss_href_list.values()), method = "rp")
+    # ks = await get_soundings(list(ks_href_list.values()), method = "tot")
+    # ts = await get_soundings(list(ts_href_list.values()), method = "cpt")
     # ps = await get_soundings(list(ps_href_list.values()), method = "prv")
     
+    ss, ks, ts = await asyncio.gather(
+        get_soundings(list(ss_href_list.values()), method = "rp"),
+        get_soundings(list(ks_href_list.values()), method = "tot"),
+        get_soundings(list(ts_href_list.values()), method = "cpt")
+    )
+
     borehole_list = []
 
 
@@ -563,19 +569,20 @@ def get_sounding_urls(item: pd.Series) -> dict:
 
     """
     
-    method_id = item.method_id
-    location_id = item.location_id
-    gbhu_id = item.gbhu_id
+    method_id = item.method_id if "method_id" in item.index else None
+    location_id = item.location_id if "location_id" in item.index else None
+    gbhu_id = item.gbhu_id if "gbhu_id" in item.index else None
     geotekniskunders_id = item.geotekniskunders_id if "geotekniskunders_id" in item.index else None
 
     method_type = item.method_type
     method_parser = {"tot": "kombinasjonsondering", "rp": "statisksondering", "cpt": "trykksondering", "sa": "geotekniskproveseriedel"}
     method_nadag = method_parser.get(method_type)
     out = dict(
-        geotekniskborehullunders = f"{base_url}/geotekniskborehullunders/items/{gbhu_id}",
-        method =  f"{base_url}/{method_nadag}/items/{method_id}",
-        location = f"{base_url}/geotekniskborehull/items/{location_id}",
-        documents = f"{base_url}/geotekniskdokument/items?tilhorergu_fk={geotekniskunders_id}" if geotekniskunders_id is not None else None
+        geotekniskborehullunders = f"{base_url}/geotekniskborehullunders/items/{gbhu_id}" if gbhu_id is not None else "Not available",
+        method =  f"{base_url}/{method_nadag}/items/{method_id}" if method_id is not None else "Not available",
+        location = f"{base_url}/geotekniskborehull/items/{location_id}" if location_id is not None else "Not available",
+        documents = f"{base_url}/geotekniskdokument/items?tilhorergu_fk={geotekniskunders_id}" if geotekniskunders_id is not None else "Not available",
+        
     )
     return out
 
