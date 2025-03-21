@@ -28,3 +28,5 @@ wheels/
 test_*
 
 __dummy__
+
+.*/
