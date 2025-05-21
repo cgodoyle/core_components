@@ -681,7 +681,96 @@ def get_rock_depth_dataset(gbhu,
     return gdf_depth
 
 
-def create_flagged_column(df, col_start, col_end):
+def create_flagged_column(df, col_start_bool_series, col_end_bool_series):
+    """
+    from gemini
+
+    """
+    n = len(df)
+    if n == 0:
+        return pd.Series([False] * n, index=df.index, dtype=bool)
+
+    active_state_col = pd.Series(False, index=df.index, dtype=bool)
+    current_is_active = False
+
+    for i in df.index:
+        if col_end_bool_series.loc[i]:
+            current_is_active = False
+        elif col_start_bool_series.loc[i]:
+            current_is_active = True
+        
+        active_state_col.loc[i] = current_is_active
+        
+    return active_state_col
+
+
+def create_intervals_from_comments(input_df):
+    """
+    from gemini
+    """
+    df = input_df.copy()
+
+    try:
+        flag_codes_config = cfg["nadag"]["flag_codes"]
+    except NameError:
+        print("No configuration file found. Using empty flag_codes_config.")
+        flag_codes_config = {} 
+        logger.debug("No configuration file found. Using empty flag_codes_config.")
+    except KeyError:
+        print("No flag_codes found in configuration. Using empty flag_codes_config.")
+        flag_codes_config = {}
+        logger.debug("No flag_codes found in configuration. Using empty flag_codes_config.")
+
+    interval_types = ["hammering", "increased_rotation_rate", "flushing"]
+
+    if "comment_code" not in df.columns:
+        logger.debug("Column 'comment_code' not found in DataFrame. Returning empty DataFrame.")
+        default_false_series = pd.Series(False, index=df.index, dtype=bool)
+        return pd.DataFrame({col: default_false_series for col in interval_types})
+
+
+    def format_comment_value(value):
+        if pd.isna(value):
+            return ""  
+        if isinstance(value, (int, float)):
+            return str(int(value)) 
+        return str(value) 
+
+    df["comment_code_str"] = df["comment_code"].apply(format_comment_value)
+
+   
+    for event_col_name, target_codes in flag_codes_config.items():
+        if not isinstance(target_codes, list):
+            df[event_col_name] = pd.Series(False, index=df.index, dtype=bool)
+            logger.debug(f"Column '{event_col_name}' in flag_codes_config is not a list. Setting to False.")
+            continue
+        
+        str_target_codes = [str(tc) for tc in target_codes]
+        df[event_col_name] = df["comment_code_str"].apply(
+            lambda comment_str: any(target_code in comment_str for target_code in str_target_codes)
+        )
+    
+    for base_col_name in interval_types:
+        start_event_col_name = base_col_name + "_starts"
+        end_event_col_name = base_col_name + "_ends"
+        
+
+        if start_event_col_name not in df.columns:
+            df[start_event_col_name] = pd.Series(False, index=df.index, dtype=bool)
+        if end_event_col_name not in df.columns:
+            df[end_event_col_name] = pd.Series(False, index=df.index, dtype=bool)
+            
+        df[base_col_name] = create_flagged_column(
+            df, 
+            df[start_event_col_name], 
+            df[end_event_col_name]
+        )
+    
+    return df[interval_types]
+
+
+
+def create_flagged_column_old(df, col_start, col_end):
     changes = pd.Series(0, index=df.index)
     changes[df[col_start]] = 1
     changes[df[col_end]] = -1
@@ -691,7 +780,7 @@ def create_flagged_column(df, col_start, col_end):
     return cum_state > 0
 
 
-def create_intervals_from_comments(input_df):
+def create_intervals_from_comments_old(input_df):
     df = input_df.copy()
     flag_codes = cfg["nadag"]["flag_codes"]
 
