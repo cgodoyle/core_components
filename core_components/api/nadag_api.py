@@ -464,7 +464,7 @@ async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.G
     sample_merged = sample_merged.drop(columns=
                                        ['lagposisjon', 'prøvemetode', 'labanalyse', 'boretlengde', 
                                         'geotekniskproveseriedel', 'observasjonkode', 
-                                        'aksieldeformasjon', 'densitetprøvetaking', 'opphav', 'høydereferanse', 
+                                        'aksieldeformasjon', 'opphav', 'høydereferanse', 
                                         'opprettetdato', 'geotekniskmetode', 'boretazimuth', 'borethelningsgrad', 
                                         'boretlengdetilberg', 'undersøkelsestart','forboretlengde', 'stoppkode', 
                                         'forboretstartlengde'], 
@@ -582,6 +582,7 @@ def get_sounding_urls(item: pd.Series) -> dict:
         method =  f"{base_url}/{method_nadag}/items/{method_id}" if method_id is not None else "Not available",
         location = f"{base_url}/geotekniskborehull/items/{location_id}" if location_id is not None else "Not available",
         documents = f"{base_url}/geotekniskdokument/items?tilhorergu_fk={geotekniskunders_id}" if geotekniskunders_id is not None else "Not available",
+        infopage = f"https://geo.ngu.no/api/faktaark/nadag/visGeotekniskBorehull.php?id={location_id}" if location_id is not None else "Not available",
         
     )
     return out
