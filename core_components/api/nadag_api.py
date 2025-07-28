@@ -1,15 +1,14 @@
-import numpy as np
-import requests
 import asyncio
-import httpx
 
 import geopandas as gpd
+import httpx
+import numpy as np
 import pandas as pd
+import requests
 from shapely.geometry import box
 
 from core_components.config import get_config
 from core_components.logger import setup_logger
-
 
 logger = setup_logger(__name__)
 cfg = get_config()
@@ -493,13 +492,28 @@ async def get_samples(gbhu, aggregate=True, map_layer_composition=True) -> gpd.G
 
         samples_gdf[['x', 'y']] = samples_gdf.get_coordinates().round(1)
         samples_gdf["z"] = samples_gdf["location_elevation"]
-        samples_gdf["depth"] = (samples_gdf.depth_base + samples_gdf.depth_top)/2
+        samples_gdf["depth"] = samples_gdf.apply(_get_sample_depth, axis=1)
 
         
         samples_gdf["location_id"] = samples_gdf.gbhu_id.map(method_to_location_dict)
 
     
     return samples_gdf
+
+
+def _get_sample_depth(sample) -> float:
+    if (sample.depth_top > sample.depth_base) and (sample.depth_base == 0):
+        depth = sample.depth_top
+    elif pd.isna(sample.depth_base) and not pd.isna(sample.depth_top):
+        depth = sample.depth_top
+    elif sample.depth_top == sample.depth_base:
+        depth = sample.depth_top
+    else:
+        try:
+            depth = (sample.depth_top + sample.depth_base) / 2
+        except TypeError:
+            depth = np.nan
+    return depth
 
 
 def _clf_aggr(x):
@@ -590,8 +604,9 @@ def get_sounding_urls(item: pd.Series) -> dict:
 
 async def get_data_big_areas(bounds: tuple, max_dist_query:int=2000,
                              include_samples=True) -> gpd.GeoDataFrame:
-    from core_components.utils.geo import split_bbox
     from tqdm.notebook import tqdm
+
+    from core_components.utils.geo import split_bbox
 
     n_cols, n_rows = max((bounds[2]-bounds[0])//max_dist_query,1),max((bounds[3]-bounds[1])//max_dist_query,1)
     sub_boxes = split_bbox(gpd.GeoDataFrame(geometry=[box(*bounds)], crs=CRS), n_rows, n_cols)

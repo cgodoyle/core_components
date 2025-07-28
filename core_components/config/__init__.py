@@ -65,7 +65,9 @@ config = {
             'vanninnhold': 'water_content',
             'høyde': 'location_elevation',
             'detaljertlagsammensetning': 'layer_composition',
-            'borenr': 'location_name',},
+            'borenr': 'location_name',
+            'densitetprøvetaking': 'unit_weight',
+            },
         'flag_codes': {
                       'hammering_starts': ["11", "15", "63"],
                       'hammering_ends': ["16", "64"],
