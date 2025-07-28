@@ -12,6 +12,10 @@ config = {
         'columns': ['bygningsnummer', 'bygningsstatus', 'kommunenavn', 'bygningstype', 'bygningId', 'geometry'],
         'query_filter': "bygningsstatus not in ('GR', 'IP', 'BR', 'BF', 'IG')"
     },
+    'svv': {
+        'url': "https://ogckart-sn1.atlas.vegvesen.no/rapportweb_1_0/wfs",
+        'layer': "Geoteknikk",
+    },
     'consequence': {
         'url': "https://gis3.nve.no/arcgis/rest/services/geoprocessing/Konsekevens1/GPServer/KonskvensParametere1",
         'items': ["Beboere","Barn","Ansatte","Bygninger","Kraftlinjer","Toglinjer"]
