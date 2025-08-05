@@ -259,12 +259,14 @@ async def get_all_soundings(borehullunders: gpd.GeoDataFrame) -> gpd.GeoDataFram
         
         upunkt_href = await get_href_list(boreholes_out.gbhu_id.map(lambda x: gbhu.query("lokalId == @x").iloc[0].undersPkt["href"]).to_list())
         boreholes_out["location_name"] = [vv["properties"]["boreNr"] for vv in upunkt_href]
+        
+        geotekniskborehull_list = await get_href_list(boreholes_out.apply(lambda x: get_sounding_urls(x)["location"], axis=1).to_list())
+        boreholes_out["geotekniskunders_id"] = list(map(lambda x: x["properties"]["opprinneligGeotekniskUndersID"], geotekniskborehull_list))
 
     else:
         boreholes_out = None
     
-    geotekniskborehull_list = await get_href_list(boreholes_out.apply(lambda x: get_sounding_urls(x)["location"], axis=1).to_list())
-    boreholes_out["geotekniskunders_id"] = list(map(lambda x: x["properties"]["opprinneligGeotekniskUndersID"], geotekniskborehull_list))
+    
 
     return boreholes_out
 
